@@ -6,6 +6,10 @@ const userschema = mongoose.Schema({
   description: { type: String },
   image: { type: String },
   joinedon: { type: Date, default: Date.now },
+  plan: { type: String, default: "Free" }, // Free, Bronze, Silver, Gold
+  phone: { type: String, default: "" },
+  lastDownloadDate: { type: String, default: "" },
+  downloadCount: { type: Number, default: 0 },
 });
 
 export default mongoose.model("user", userschema);

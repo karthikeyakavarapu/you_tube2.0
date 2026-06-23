@@ -5,18 +5,27 @@ import VideoUploader from "@/components/VideoUploader";
 import { useUser } from "@/lib/AuthContext";
 import { notFound } from "next/navigation";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axiosInstance from "@/lib/axiosinstance";
 
 const index = () => {
   const router = useRouter();
   const { id } = router.query;
   const { user } = useUser();
-  // const user: any = {
-  //   id: "1",
-  //   name: "John Doe",
-  //   email: "john@example.com",
-  //   image: "https://github.com/shadcn.png?height=32&width=32",
-  // };
+  const [activeTab, setActiveTab] = useState("videos");
+  const [downloadedVideos, setDownloadedVideos] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activeTab === "downloads" && user) {
+      axiosInstance.get(`/payment/downloads/${user._id}`)
+        .then((res) => {
+          const mapped = res.data.map((d: any) => d.videoId).filter(Boolean);
+          setDownloadedVideos(mapped);
+        })
+        .catch((err) => console.log("Error fetching downloads:", err));
+    }
+  }, [activeTab, user]);
+
   try {
     let channel = user;
    
@@ -48,23 +57,32 @@ const index = () => {
         createdAt: new Date(Date.now() - 86400000).toISOString(),
       },
     ];
+
     return (
-      <div className="flex-1 min-h-screen bg-white">
+      <div className="flex-1 min-h-screen bg-white dark:bg-neutral-900 dark:text-white">
         <div className="max-w-full mx-auto">
           <ChannelHeader channel={channel} user={user} />
-          <Channeltabs />
-          <div className="px-4 pb-8">
-            <VideoUploader channelId={id} channelName={channel?.channelname} />
-          </div>
-          <div className="px-4 pb-8">
-            <ChannelVideos videos={videos} />
+          <Channeltabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          {activeTab === "videos" && (
+            <div className="px-4 pb-8">
+              <VideoUploader channelId={id} channelName={channel?.channelname} />
+            </div>
+          )}
+          <div className="px-4 pb-8 mt-4">
+            {activeTab === "downloads" ? (
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Downloaded Videos</h2>
+                <ChannelVideos videos={downloadedVideos} />
+              </div>
+            ) : (
+              <ChannelVideos videos={videos} />
+            )}
           </div>
         </div>
       </div>
     );
   } catch (error) {
     console.error("Error fetching channel data:", error);
-   
   }
 };
 
