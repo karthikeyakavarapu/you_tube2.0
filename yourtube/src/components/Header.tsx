@@ -20,6 +20,7 @@ const Header = () => {
     user,
     logout,
     handlegooglesignin,
+    handledemologin,
     theme,
     detectedState,
     simulatedState,
@@ -139,7 +140,14 @@ const Header = () => {
               </DropdownMenu>
             </>
           ) : (
-            <>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:text-red-400 dark:hover:bg-neutral-800"
+                onClick={() => handledemologin()}
+              >
+                Demo Login
+              </Button>
               <Button
                 className="flex items-center gap-2"
                 onClick={handlegooglesignin}
@@ -147,7 +155,7 @@ const Header = () => {
                 <User className="w-4 h-4" />
                 Sign in
               </Button>
-            </>
+            </div>
           )}{" "}
         </div>
         <Channeldialogue

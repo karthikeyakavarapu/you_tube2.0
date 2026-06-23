@@ -147,6 +147,39 @@ export const UserProvider = ({ children }) => {
       }
     } catch (error) {
       console.error(error);
+      toast.error(error.message || "Google sign-in failed. Try 'Demo Login' instead!");
+    }
+  };
+
+  const handledemologin = async (customEmail) => {
+    try {
+      const email = customEmail || "tester@yourtube.com";
+      const payload = {
+        email: email,
+        name: "Tester Account",
+        image: "https://github.com/shadcn.png",
+      };
+      
+      const response = await axiosInstance.post("/user/login", payload);
+      const activeState = simulatedState || detectedState || "Tamil Nadu"; // Fallback default to test out-of-box
+
+      // Initiate verification modal
+      setPendingUser(response.data.result);
+      setPendingState(activeState);
+      setShowOtpModal(true);
+      setOtpSent(false);
+      setOtpInput("");
+      setTestOtpUrl("");
+      setSimulatedOtpCode("");
+
+      const isSouthIndia = ["Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh", "Telangana"].includes(activeState);
+      if (isSouthIndia) {
+        // Automatically send email OTP immediately
+        await triggerSendOtp(response.data.result, activeState, "");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Demo login failed. Please check backend connection.");
     }
   };
 
@@ -184,6 +217,7 @@ export const UserProvider = ({ children }) => {
         login,
         logout,
         handlegooglesignin,
+        handledemologin,
         theme,
         detectedState,
         simulatedState,
