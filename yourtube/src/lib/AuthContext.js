@@ -6,6 +6,10 @@ import { toast } from "sonner";
 
 const UserContext = createContext();
 
+function isSouthIndia(stateVal) {
+  return ["Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh", "Telangana"].includes(stateVal);
+}
+
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   
@@ -313,10 +317,6 @@ export const UserProvider = ({ children }) => {
       )}
     </UserContext.Provider>
   );
-};
-
-const isSouthIndia = (stateVal) => {
-  return ["Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh", "Telangana"].includes(stateVal);
 };
 
 export const useUser = () => useContext(UserContext);
