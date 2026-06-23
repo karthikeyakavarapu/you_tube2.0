@@ -1,8 +1,12 @@
 "use strict";
 import multer from "multer";
+import os from "os";
+import fs from "fs";
+
 const storage = multer.diskStorage({
-  destination: (req, res, cb) => {
-    cb(null, "uploads");
+  destination: (req, file, cb) => {
+    const dest = process.env.VERCEL ? os.tmpdir() : "uploads";
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     cb(
