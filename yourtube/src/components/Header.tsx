@@ -94,7 +94,7 @@ const Header = () => {
             className="dark:text-white"
             onClick={() => {
               if (!user) {
-                toast.error("Please sign in or use 'Demo Login' to create a channel and upload videos!");
+                toast.error("Please sign in to create a channel and upload videos!");
               } else if (!user.channelname) {
                 setisdialogeopen(true);
               } else {
