@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { Input } from "./ui/input";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,11 +89,25 @@ const Header = () => {
           </Button>
         </form>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="dark:text-white"
+            onClick={() => {
+              if (!user) {
+                toast.error("Please sign in or use 'Demo Login' to create a channel and upload videos!");
+              } else if (!user.channelname) {
+                setisdialogeopen(true);
+              } else {
+                router.push(`/channel/${user._id}`);
+              }
+            }}
+          >
+            <VideoIcon className="w-6 h-6" />
+          </Button>
+
           {user ? (
             <>
-              <Button variant="ghost" size="icon" className="dark:text-white">
-                <VideoIcon className="w-6 h-6" />
-              </Button>
               <Button variant="ghost" size="icon" className="dark:text-white">
                 <Bell className="w-6 h-6" />
               </Button>
