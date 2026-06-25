@@ -117,6 +117,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
         if (!hasStartedTransfer) {
           console.warn("Firebase upload connection hanging. Switching to backend upload...");
           uploadTask.cancel();
+          toast.error("Firebase Storage connection timed out! Please ensure Firebase Storage is activated/created in your Firebase Console.");
           toast.info("Switching to backup upload server...");
           uploadToBackend();
         }
@@ -141,7 +142,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
           if (firebaseHangingTimeout) {
             clearTimeout(firebaseHangingTimeout);
           }
-          // If cancelled due to timeout switch, ignore error toast
+          // If cancelled due to timeout switch, ignore generic error toast
           if (error.code === "storage/canceled" && !hasStartedTransfer) {
             return;
           }
@@ -149,6 +150,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
             return;
           }
           console.error("Firebase upload error:", error);
+          toast.error(`Firebase Storage error: ${error.message} (${error.code})`);
           console.warn("Firebase failed. Falling back to backend Multer upload...");
           uploadToBackend();
         },
