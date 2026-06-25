@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import https from "https";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
@@ -30,7 +31,30 @@ app.get("/uploads/:filename", (req, res) => {
     return res.sendFile(path.resolve(tmpPath));
   }
 
-  return res.redirect("https://lorem.video/720p");
+  // Act as a transparent proxy for the fallback video to support seeking (range requests) and bypass CORS restrictions
+  const fallbackUrl = "https://lorem.video/720p";
+  const headers = {};
+  if (req.headers.range) {
+    headers.range = req.headers.range;
+  }
+  
+  https.get(fallbackUrl, { headers }, (stream) => {
+    if (stream.statusCode) {
+      res.statusCode = stream.statusCode;
+    }
+    // Copy all streaming headers (e.g. content-range, content-length, accept-ranges)
+    for (const key in stream.headers) {
+      res.setHeader(key, stream.headers[key]);
+    }
+    // Ensure CORS headers are open
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    stream.pipe(res);
+  }).on("error", (err) => {
+    console.error("Video proxy streaming error:", err);
+    if (!res.headersSent) {
+      res.status(500).send("Video stream failed");
+    }
+  });
 });
 app.get("/", (req, res) => {
   res.send("You tube backend is working");
