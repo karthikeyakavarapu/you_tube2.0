@@ -127,18 +127,32 @@ const VideoInfo = ({ video }: any) => {
       if (res.data.success) {
         toast.success("Download started!");
 
-        // Trigger file download
-        const fileUrl = `${axiosInstance.defaults.baseURL}/${video.filepath}`;
-        const response = await fetch(fileUrl);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${video.videotitle || "video"}.mp4`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        const parts = video.filepath.split(/[/\\]/);
+        const filename = parts[parts.length - 1];
+        const downloadUrl = `${axiosInstance.defaults.baseURL}/uploads/${filename}`;
+
+        try {
+          const response = await fetch(downloadUrl);
+          if (!response.ok) throw new Error("Fetch failed");
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${video.videotitle || "video"}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        } catch (fetchErr) {
+          console.warn("CORS fetch blocked, falling back to direct tab download:", fetchErr);
+          const a = document.createElement("a");
+          a.href = downloadUrl;
+          a.target = "_blank";
+          a.download = `${video.videotitle || "video"}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
       }
     } catch (error: any) {
       if (error.response?.data?.limitReached) {

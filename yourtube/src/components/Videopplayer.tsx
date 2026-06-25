@@ -47,6 +47,13 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     }
   }, []);
 
+  // Reload video source when video changes
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  }, [video]);
+
   // Timer interval to count play duration
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
