@@ -257,6 +257,9 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
 
   const getVideoSrc = () => {
     if (!video?.filepath) return "";
+    if (video.filepath.startsWith("http://") || video.filepath.startsWith("https://")) {
+      return video.filepath;
+    }
     const parts = video.filepath.split(/[/\\]/);
     const filename = parts[parts.length - 1];
     return `${axiosInstance.defaults.baseURL}/uploads/${filename}`;

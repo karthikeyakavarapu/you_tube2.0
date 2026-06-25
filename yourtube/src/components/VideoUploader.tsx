@@ -6,6 +6,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
 import axiosInstance from "@/lib/axiosinstance";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 
 const VideoUploader = ({ channelId, channelName }: any) => {
   const [isUploading, setIsUploading] = useState(false);
@@ -14,6 +16,8 @@ const VideoUploader = ({ channelId, channelName }: any) => {
   const [videoTitle, setVideoTitle] = useState("");
   const [uploadComplete, setUploadComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTaskRef = useRef<any>(null);
+
   const handlefilechange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -33,52 +37,93 @@ const VideoUploader = ({ channelId, channelName }: any) => {
       }
     }
   };
+
   const resetForm = () => {
     setVideoFile(null);
     setVideoTitle("");
     setIsUploading(false);
     setUploadProgress(0);
     setUploadComplete(false);
+    uploadTaskRef.current = null;
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
+
   const cancelUpload = () => {
-    if (isUploading) {
+    if (uploadTaskRef.current) {
+      uploadTaskRef.current.cancel();
       toast.error("Your video upload has been cancelled");
+      resetForm();
+    } else {
+      resetForm();
     }
   };
+
   const handleUpload = async () => {
     if (!videoFile || !videoTitle.trim()) {
       toast.error("Please provide file and title");
       return;
     }
-    const formdata = new FormData();
-    formdata.append("file", videoFile);
-    formdata.append("videotitle", videoTitle);
-    formdata.append("videochanel", channelName);
-    formdata.append("uploader", channelId);
-    console.log(formdata)
+
     try {
       setIsUploading(true);
       setUploadProgress(0);
-      const res = await axiosInstance.post("/video/upload", formdata, {
-         headers: {
-    "Content-Type": "multipart/form-data", // ✅ MUST for FormData
-  },
-        onUploadProgress: (progresEvent: any) => {
+
+      // Create unique path in Firebase storage bucket
+      const fileRef = ref(storage, `videos/${Date.now()}-${videoFile.name}`);
+      const uploadTask = uploadBytesResumable(fileRef, videoFile);
+      uploadTaskRef.current = uploadTask;
+
+      uploadTask.on(
+        "state_changed",
+        (snapshot) => {
           const progress = Math.round(
-            (progresEvent.loaded * 100) / progresEvent.total
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
           );
           setUploadProgress(progress);
         },
-      });
-      toast.success("Upload successfully");
-      resetForm();
+        (error) => {
+          // If user cancelled, don't show generic error toast
+          if (error.code === "storage/canceled") {
+            return;
+          }
+          console.error("Firebase upload error:", error);
+          toast.error("Firebase storage upload failed. Try again.");
+          setIsUploading(false);
+        },
+        async () => {
+          try {
+            // Get permanent URL on successful upload
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+            // Register with backend database
+            await axiosInstance.post("/video/upload", {
+              videotitle: videoTitle,
+              filename: videoFile.name,
+              filepath: downloadURL,
+              filetype: videoFile.type,
+              filesize: videoFile.size,
+              videochanel: channelName,
+              uploader: channelId,
+            });
+
+            toast.success("Upload successfully");
+            setUploadComplete(true);
+            setTimeout(() => {
+              resetForm();
+            }, 1200);
+          } catch (backendError) {
+            console.error("Backend upload error:", backendError);
+            toast.error("Could not register video with backend.");
+          } finally {
+            setIsUploading(false);
+          }
+        }
+      );
     } catch (error) {
-      console.error("Error uploading video:", error);
-      toast.error("There was an error uploading your video. Please try again.");
-    } finally {
+      console.error("Upload preparation error:", error);
+      toast.error("Upload preparation failed.");
       setIsUploading(false);
     }
   };

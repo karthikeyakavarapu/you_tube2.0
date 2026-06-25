@@ -129,7 +129,9 @@ const VideoInfo = ({ video }: any) => {
 
         const parts = video.filepath.split(/[/\\]/);
         const filename = parts[parts.length - 1];
-        const downloadUrl = `${axiosInstance.defaults.baseURL}/uploads/${filename}`;
+        const downloadUrl = (video.filepath.startsWith("http://") || video.filepath.startsWith("https://"))
+          ? video.filepath
+          : `${axiosInstance.defaults.baseURL}/uploads/${filename}`;
 
         try {
           const response = await fetch(downloadUrl);
