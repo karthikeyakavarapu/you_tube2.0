@@ -36,19 +36,7 @@ app.get("/", (req, res) => {
   res.send("You tube backend is working");
 });
 app.get("/test-db", async (req, res) => {
-  try {
-    const readyState = mongoose.connection.readyState;
-    const states = ["disconnected", "connected", "connecting", "disconnecting"];
-    const dbUrl = process.env.DB_URL;
-    const maskedUrl = dbUrl ? dbUrl.replace(/\/\/.*@/, "//***:***@") : "undefined";
-    return res.status(200).json({
-      success: true,
-      readyState: states[readyState] || readyState,
-      dbUrl: maskedUrl,
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
+  return res.status(200).send(process.env.DB_URL);
 });
 app.use(bodyParser.json());
 app.use("/user", userroutes);
