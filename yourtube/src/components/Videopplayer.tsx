@@ -248,6 +248,13 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
     }
   };
 
+  const getVideoSrc = () => {
+    if (!video?.filepath) return "";
+    const parts = video.filepath.split(/[/\\]/);
+    const filename = parts[parts.length - 1];
+    return `${axiosInstance.defaults.baseURL}/uploads/${filename}`;
+  };
+
   return (
     <div className="relative aspect-video bg-black rounded-lg overflow-hidden select-none">
       
@@ -298,7 +305,7 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
         poster={`/placeholder.svg?height=480&width=854`}
       >
         <source
-          src={`${axiosInstance.defaults.baseURL}/${video?.filepath}`}
+          src={getVideoSrc()}
           type="video/mp4"
         />
         Your browser does not support the video tag.
