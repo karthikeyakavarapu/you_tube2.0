@@ -30,7 +30,7 @@ app.get("/uploads/:filename", (req, res) => {
     return res.sendFile(path.resolve(tmpPath));
   }
 
-  return res.redirect("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
+  return res.redirect("https://lorem.video/720p");
 });
 app.get("/", (req, res) => {
   res.send("You tube backend is working");
