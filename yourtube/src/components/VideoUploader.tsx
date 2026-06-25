@@ -60,6 +60,40 @@ const VideoUploader = ({ channelId, channelName }: any) => {
     }
   };
 
+  const uploadToBackend = async () => {
+    if (!videoFile) return;
+    const formdata = new FormData();
+    formdata.append("file", videoFile);
+    formdata.append("videotitle", videoTitle);
+    formdata.append("videochanel", channelName);
+    formdata.append("uploader", channelId);
+
+    try {
+      setIsUploading(true);
+      setUploadProgress(0);
+      await axiosInstance.post("/video/upload", formdata, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent: any) => {
+          const progress = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(progress);
+        },
+      });
+      toast.success("Upload successfully (via backup host)");
+      setUploadComplete(true);
+      setTimeout(() => {
+        resetForm();
+      }, 1200);
+    } catch (error) {
+      console.error("Backend fallback upload error:", error);
+      toast.error("There was an error uploading your video. Please try again.");
+      setIsUploading(false);
+    }
+  };
+
   const handleUpload = async () => {
     if (!videoFile || !videoTitle.trim()) {
       toast.error("Please provide file and title");
@@ -70,29 +104,58 @@ const VideoUploader = ({ channelId, channelName }: any) => {
       setIsUploading(true);
       setUploadProgress(0);
 
+      let firebaseHangingTimeout: NodeJS.Timeout | null = null;
+      let hasStartedTransfer = false;
+
       // Create unique path in Firebase storage bucket
       const fileRef = ref(storage, `videos/${Date.now()}-${videoFile.name}`);
       const uploadTask = uploadBytesResumable(fileRef, videoFile);
       uploadTaskRef.current = uploadTask;
 
+      // Fall back if Firebase hangs for 6 seconds without transferring any bytes
+      firebaseHangingTimeout = setTimeout(() => {
+        if (!hasStartedTransfer) {
+          console.warn("Firebase upload connection hanging. Switching to backend upload...");
+          uploadTask.cancel();
+          toast.info("Switching to backup upload server...");
+          uploadToBackend();
+        }
+      }, 6000);
+
       uploadTask.on(
         "state_changed",
         (snapshot) => {
+          if (snapshot.bytesTransferred > 0) {
+            hasStartedTransfer = true;
+            if (firebaseHangingTimeout) {
+              clearTimeout(firebaseHangingTimeout);
+              firebaseHangingTimeout = null;
+            }
+          }
           const progress = Math.round(
             (snapshot.bytesTransferred / snapshot.totalBytes) * 100
           );
           setUploadProgress(progress);
         },
         (error) => {
-          // If user cancelled, don't show generic error toast
+          if (firebaseHangingTimeout) {
+            clearTimeout(firebaseHangingTimeout);
+          }
+          // If cancelled due to timeout switch, ignore error toast
+          if (error.code === "storage/canceled" && !hasStartedTransfer) {
+            return;
+          }
           if (error.code === "storage/canceled") {
             return;
           }
           console.error("Firebase upload error:", error);
-          toast.error("Firebase storage upload failed. Try again.");
-          setIsUploading(false);
+          console.warn("Firebase failed. Falling back to backend Multer upload...");
+          uploadToBackend();
         },
         async () => {
+          if (firebaseHangingTimeout) {
+            clearTimeout(firebaseHangingTimeout);
+          }
           try {
             // Get permanent URL on successful upload
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -114,8 +177,9 @@ const VideoUploader = ({ channelId, channelName }: any) => {
               resetForm();
             }, 1200);
           } catch (backendError) {
-            console.error("Backend upload error:", backendError);
-            toast.error("Could not register video with backend.");
+            console.error("Backend registration error:", backendError);
+            toast.error("Could not register video with backend. Trying fallback...");
+            uploadToBackend();
           } finally {
             setIsUploading(false);
           }
@@ -123,8 +187,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
       );
     } catch (error) {
       console.error("Upload preparation error:", error);
-      toast.error("Upload preparation failed.");
-      setIsUploading(false);
+      uploadToBackend();
     }
   };
   return (
