@@ -36,8 +36,37 @@ app.get("/", (req, res) => {
   res.send("You tube backend is working");
 });
 app.get("/test-db", async (req, res) => {
-  return res.status(200).send(process.env.DB_URL);
+  try {
+    const state = mongoose.connection.readyState;
+    const states = ["disconnected", "connected", "connecting", "disconnecting"];
+    return res.status(200).json({
+      status: states[state] || "unknown",
+      readyState: state,
+      hasDbUrl: !!process.env.DB_URL
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 });
+
+// Database connection middleware for serverless environment
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+  try {
+    console.log("Database not connected. ReadyState is:", mongoose.connection.readyState, "Connecting...");
+    await mongoose.connect(process.env.DB_URL, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    console.log("Database connected successfully in middleware");
+    next();
+  } catch (error) {
+    console.error("Database connection error in middleware:", error);
+    res.status(500).json({ message: "Database connection failed", error: error.message });
+  }
+});
+
 app.use(bodyParser.json());
 app.use("/user", userroutes);
 app.use("/video", videoroutes);
@@ -52,14 +81,15 @@ app.listen(PORT, () => {
   console.log(`server running on port ${PORT}`);
 });
 
+// Also initialize connection at startup
 const DBURL = process.env.DB_URL;
 mongoose
   .connect(DBURL)
   .then(() => {
-    console.log("Mongodb connected");
+    console.log("Mongodb connected at startup");
   })
   .catch((error) => {
-    console.log(error);
+    console.log("Startup connection error:", error);
   });
 
 export default app;
